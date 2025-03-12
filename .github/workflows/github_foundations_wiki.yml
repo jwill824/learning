@@ -62,6 +62,35 @@ jobs:
           git init
           git checkout -b master
           git add .
+          
+          # First-time initialization or update
           git commit -m "Update wiki content"
+          echo "Attempting to push wiki content..."
           git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git"
-          git push -f origin master
+          
+          # Try normal push first (works for existing wikis)
+          if git push -f origin master; then
+            echo "Wiki updated successfully!"
+            exit 0
+          fi
+          
+          # If first push failed, wiki might not exist - try to initialize
+          echo "First push failed, attempting to initialize wiki..."
+          echo "# Welcome" > README.md
+          git add README.md
+          git commit -m "Initialize wiki"
+          
+          if git push -f origin master; then
+            echo "Wiki initialized successfully! Updating content..."
+            # Now push the actual content
+            git reset --hard HEAD^
+            git add .
+            git commit -m "Add wiki content"
+            git push -f origin master
+          else
+            echo "Error: Failed to initialize wiki. Please check:"
+            echo "1. Wiki is enabled in repository settings"
+            echo "2. GITHUB_TOKEN has wiki write permission"
+            echo "3. Repository path is correct"
+            exit 1
+          fi
