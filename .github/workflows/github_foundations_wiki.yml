@@ -57,40 +57,38 @@ jobs:
       - name: Push to Wiki
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.repository }}
         run: |
           cd wiki
           git init
           git checkout -b master
           git add .
-          
-          # First-time initialization or update
           git commit -m "Update wiki content"
-          echo "Attempting to push wiki content..."
-          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git"
           
-          # Try normal push first (works for existing wikis)
-          if git push -f origin master; then
+          # Ensure proper URL formatting
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_NAME}.wiki.git"
+          echo "Using repository URL: ${REPO_URL//${GITHUB_TOKEN}/***}"
+          
+          git remote add origin "${REPO_URL}"
+          
+          # Try pushing with debug output
+          if git push -v -f origin master; then
             echo "Wiki updated successfully!"
             exit 0
           fi
           
-          # If first push failed, wiki might not exist - try to initialize
-          echo "First push failed, attempting to initialize wiki..."
-          echo "# Welcome" > README.md
-          git add README.md
-          git commit -m "Initialize wiki"
+          # If push failed, try alternative initialization
+          echo "First push failed, verifying repository..."
+          curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            "https://api.github.com/repos/${REPO_NAME}"
           
-          if git push -f origin master; then
-            echo "Wiki initialized successfully! Updating content..."
-            # Now push the actual content
-            git reset --hard HEAD^
-            git add .
-            git commit -m "Add wiki content"
-            git push -f origin master
+          if [ $? -eq 0 ]; then
+            echo "Repository exists but wiki push failed. Ensure:"
+            echo "1. Wiki is enabled in repository settings at:"
+            echo "   https://github.com/${REPO_NAME}/settings/features"
+            echo "2. GITHUB_TOKEN has 'repo' scope"
           else
-            echo "Error: Failed to initialize wiki. Please check:"
-            echo "1. Wiki is enabled in repository settings"
-            echo "2. GITHUB_TOKEN has wiki write permission"
-            echo "3. Repository path is correct"
-            exit 1
+            echo "Repository not found. Check repository name: ${REPO_NAME}"
           fi
+          exit 1
