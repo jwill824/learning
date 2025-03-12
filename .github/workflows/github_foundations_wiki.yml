@@ -8,24 +8,17 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   generate-wiki:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
-      - name: Configure Git
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global init.defaultBranch master
 
       - name: Create Wiki content
         run: |
@@ -54,32 +47,5 @@ jobs:
             fi
           done
 
-      - name: Push to Wiki
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}  # Use PAT instead of GITHUB_TOKEN
-          REPO_NAME: ${{ github.repository }}
-        run: |
-          cd wiki
-          git init
-          git checkout -b master
-          git add .
-          git commit -m "Update wiki content"
-          
-          # Use PAT for authentication
-          REPO_URL="https://${GH_PAT}@github.com/${REPO_NAME}.wiki.git"
-          echo "Using repository URL: ${REPO_URL//${GH_PAT}/***}"
-          
-          git remote add origin "${REPO_URL}"
-          
-          if git push -v -f origin master; then
-            echo "Wiki updated successfully!"
-            exit 0
-          else
-            echo "Push failed. Please ensure:"
-            echo "1. You have created a Personal Access Token (PAT) with 'repo' scope:"
-            echo "   https://github.com/settings/tokens/new?scopes=repo&description=Wiki+Access"
-            echo "2. Added the PAT as 'GH_PAT' secret in repository settings:"
-            echo "   https://github.com/${REPO_NAME}/settings/secrets/actions"
-            echo "3. Wiki is enabled in repository settings"
-            exit 1
-          fi
+      - name: Publish to Wiki
+        uses: Andrew-Chen-Wang/github-wiki-action@v4
