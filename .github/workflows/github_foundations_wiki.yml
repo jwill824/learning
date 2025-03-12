@@ -20,9 +20,11 @@ jobs:
           fetch-depth: 0
 
       - name: Configure Git
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global init.defaultBranch master
 
       - name: Create Wiki content
@@ -53,13 +55,13 @@ jobs:
           done
 
       - name: Push to Wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd wiki
           git init
           git checkout -b master
           git add .
           git commit -m "Update wiki content"
-          git remote add origin "https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git"
           git push -f origin master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
