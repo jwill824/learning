@@ -56,7 +56,7 @@ jobs:
 
       - name: Push to Wiki
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}  # Use PAT instead of GITHUB_TOKEN
           REPO_NAME: ${{ github.repository }}
         run: |
           cd wiki
@@ -65,30 +65,21 @@ jobs:
           git add .
           git commit -m "Update wiki content"
           
-          # Ensure proper URL formatting
-          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_NAME}.wiki.git"
-          echo "Using repository URL: ${REPO_URL//${GITHUB_TOKEN}/***}"
+          # Use PAT for authentication
+          REPO_URL="https://${GH_PAT}@github.com/${REPO_NAME}.wiki.git"
+          echo "Using repository URL: ${REPO_URL//${GH_PAT}/***}"
           
           git remote add origin "${REPO_URL}"
           
-          # Try pushing with debug output
           if git push -v -f origin master; then
             echo "Wiki updated successfully!"
             exit 0
-          fi
-          
-          # If push failed, try alternative initialization
-          echo "First push failed, verifying repository..."
-          curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${GITHUB_TOKEN}" \
-            "https://api.github.com/repos/${REPO_NAME}"
-          
-          if [ $? -eq 0 ]; then
-            echo "Repository exists but wiki push failed. Ensure:"
-            echo "1. Wiki is enabled in repository settings at:"
-            echo "   https://github.com/${REPO_NAME}/settings/features"
-            echo "2. GITHUB_TOKEN has 'repo' scope"
           else
-            echo "Repository not found. Check repository name: ${REPO_NAME}"
+            echo "Push failed. Please ensure:"
+            echo "1. You have created a Personal Access Token (PAT) with 'repo' scope:"
+            echo "   https://github.com/settings/tokens/new?scopes=repo&description=Wiki+Access"
+            echo "2. Added the PAT as 'GH_PAT' secret in repository settings:"
+            echo "   https://github.com/${REPO_NAME}/settings/secrets/actions"
+            echo "3. Wiki is enabled in repository settings"
+            exit 1
           fi
-          exit 1
