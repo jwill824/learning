@@ -1,0 +1,57 @@
+name: GitHub Foundations Wiki Generator
+
+on:
+    push:
+        paths:
+            - 'github_foundations/**'
+        branches:
+            - master
+    workflow_dispatch:
+
+jobs:
+    generate-wiki:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v3
+              with:
+                fetch-depth: 0
+
+            - name: Configure Git
+              run: |
+                git config --global user.name "GitHub Actions"
+                git config --global user.email "actions@github.com"
+
+            - name: Create Wiki content
+              run: |
+                mkdir -p wiki
+                # Generate index page
+                echo "# GitHub Foundations Wiki" > wiki/Home.md
+                echo "\nThis wiki is automatically generated from the github_foundations modules.\n" >> wiki/Home.md
+                
+                # Generate pages for each module
+                for file in github_foundations/*; do
+                    if [ -d "$file" ]; then
+                        module_name=$(basename "$file")
+                        echo "Processing $module_name..."
+                        
+                        # Create page for module
+                        page_file="wiki/${module_name}.md"
+                        echo "# ${module_name}" > "$page_file"
+                        
+                        # Add content from README if it exists
+                        if [ -f "$file/README.md" ]; then
+                            cat "$file/README.md" >> "$page_file"
+                        fi
+                    fi
+                done
+
+            - name: Push to Wiki
+              run: |
+                cd wiki
+                git init
+                git add .
+                git commit -m "Update wiki content"
+                git push --force "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" master
